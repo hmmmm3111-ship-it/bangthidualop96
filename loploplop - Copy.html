@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bảng Điểm Thi Đua Lớp</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&amp;family=Fraunces:wght@600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    :root { --blue:#27669a; --line:#bad8ee; --pale:#f1f8fd; --ink:#18374d; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"DM Sans",sans-serif; color:var(--ink); }
+    .app-shell { width:100%; min-height:100vh; background:radial-gradient(circle at 95% 0%,#e6f4fe 0%,transparent 34%),#ffffff; }
+    .site-inner { width:100%; max-width:1160px; margin:auto; padding:0 28px; }
+    .topbar { border-bottom:1px solid var(--line); background:#fff; }
+    .masthead { padding:52px 0 42px; }
+    .eyebrow { letter-spacing:.17em; text-transform:uppercase; }
+    .display-title { font-family:"Fraunces",serif; line-height:1.12; }
+    .group-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .group-card { border:1.5px solid var(--line); border-radius:20px; background:#fff; padding:23px; box-shadow:0 8px 28px rgba(32,104,150,.045); min-width:0; transition:border-color .2s,box-shadow .2s,transform .2s; }
+    .group-card:nth-child(2), .group-card:nth-child(5) { background:#f7fbff; }
+    .group-card.is-selected { border-color:var(--blue); box-shadow:0 0 0 3px #d8ecfa,0 12px 30px rgba(32,104,150,.10); }
+    .group-card:hover { border-color:var(--blue); transform:translateY(-2px); }
+    .group-select { display:block; width:100%; text-align:left; border:0; padding:0; background:transparent; color:inherit; cursor:pointer; }
+    .score { font-family:"Fraunces",serif; font-size:44px; line-height:1; color:#27669a; }
+    .panel { border:1.5px solid var(--line); border-radius:20px; background:#fff; padding:26px; }
+    .history-row { border-top:1px solid #dceaf5; padding:17px 0; }
+    .history-row:first-child { border-top:0; }
+    .focusable:focus-visible, .group-select:focus-visible, select:focus-visible { outline:3px solid #27669a; outline-offset:4px; }
+    .weekly-panel { background:#fff; position:relative; z-index:10; pointer-events:auto; }
+    .weekly-panel select { position:relative; z-index:11; pointer-events:auto; }
+    .weekly-table-scroll { width:100%; overflow-x:auto; border:1px solid #a9c8dd; border-radius:10px; }
+    .weekly-table { border-collapse:collapse; width:100%; min-width:1000px; font-size:13px; table-layout:fixed; }
+    .weekly-table th, .weekly-table td { border:1px solid #bfd5e4; padding:9px 6px; vertical-align:middle; text-align:center; overflow-wrap:anywhere; }
+    .weekly-table thead th { background:#e9f5fd; color:#18374d; font-weight:700; line-height:1.25; }
+    .weekly-table th:first-child, .weekly-table td:first-child { width:46px; }
+    .weekly-table th:nth-child(2), .weekly-table td:nth-child(2) { width:165px; text-align:left; padding-left:12px; }
+    .weekly-table tbody tr:nth-child(even) { background:#f7fbff; }
+    .weekly-table tbody td { height:37px; }
+    .weekly-table tbody td:last-child { font-weight:700; color:#27669a; }
+    
+    /* Hiệu ứng chỉnh sửa khi đăng nhập */
+    .editable-cell:hover { background-color: #f0fdf4 !important; outline: 1px dashed #22c55e; cursor: pointer; }
+    .modal-overlay { position:fixed; inset:0; background:rgba(15,23,42,0.4); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:50; }
+    
+    @media(max-width:760px) {
+      .site-inner { padding:0 18px; }
+      .masthead { padding:36px 0 30px; }
+      .group-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .group-card { padding:18px; }
+      .panel { padding:20px; }
+    }
+    @media(max-width:480px) { .group-grid { grid-template-columns:1fr; } }
+    @media(prefers-reduced-motion:reduce) { .group-card { transition:none; } }
+  </style>
+  <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
+ </head>
+ <body class="w-full" style="background: rgb(255, 255, 255);">
+  <div class="app-shell w-full">
+   <header class="canva-header topbar" style="background: rgb(255, 255, 255);">
+    <div class="site-inner flex items-center justify-between gap-4 py-4">
+     <span class="canva-text font-bold" style="color: rgb(39, 102, 154); font-size: 14px;">THI ĐUA · LỚP 9.6</span> 
+     <div class="flex items-center gap-3">
+       <span id="view-badge" class="canva-tag rounded-full px-3 py-1 font-semibold" style="background: rgb(233, 245, 253); color: rgb(39, 102, 154); font-size: 12px;">Chế độ xem công khai</span>
+       <button id="btn-auth-action" onclick="toggleAuthModal()" class="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-700 transition">Đăng nhập Quản trị</button>
+     </div>
+    </div>
+   </header>
+
+   <main class="site-inner pb-16">
+    <section class="masthead">
+     <p class="canva-text eyebrow mb-3 font-bold" style="color: rgb(69, 130, 173); font-size: 12px;">điểm liệt thì thiệt ráng chịu:D</p>
+     <h1 class="canva-text display-title mb-4" style="color: rgb(24, 55, 77); font-weight: 700; font-size: 32px;">Bảng điểm thi đua lớp</h1>
+     <p class="canva-text max-w-2xl leading-relaxed" style="color: rgb(82, 112, 131);"></p>
+    </section>
+
+    <!-- TAB QUẢN TRỊ (Chỉ hiển thị khi đã đăng nhập thành công) -->
+    <section id="admin-dashboard-tab" class="panel mb-7 border-sky-300 bg-slate-50" hidden>
+      <div class="flex items-center justify-between border-b border-slate-300 pb-3 mb-4">
+        <h3 class="font-bold text-lg text-slate-800">🛠️ Bảng Điều Khiển Quản Trị (Admin Dashboard)</h3>
+        <span class="text-xs text-emerald-700 font-semibold bg-emerald-100 px-2.5 py-1 rounded-full">Đang đăng nhập: <span id="current-logged-user">nguynn</span></span>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Phần quản lý danh sách tài khoản -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <h4 class="font-bold text-sm text-slate-700 mb-3">Quản lý Tài khoản Đăng nhập</h4>
+          
+          <form onsubmit="handleAddAccount(event)" class="space-y-3 mb-4 border-b border-slate-100 pb-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Thêm tài khoản mới</label>
+              <div class="flex gap-2">
+                <input type="text" id="new-acc-user" placeholder="Tên tài khoản" required class="w-1/2 rounded border border-slate-300 px-2 py-1 text-xs">
+                <input type="password" id="new-acc-pass" placeholder="Mật khẩu" required class="w-1/2 rounded border border-slate-300 px-2 py-1 text-xs">
+              </div>
+            </div>
+            <button type="submit" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs py-1.5 rounded transition">Thêm tài khoản</button>
+          </form>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-2">Danh sách tài khoản hiện có:</label>
+            <div id="accounts-list-container" class="space-y-2 max-h-36 overflow-y-auto">
+              <!-- Render danh sách tài khoản động -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Phần thông báo / hướng dẫn chỉnh sửa trực tiếp -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <h4 class="font-bold text-sm text-slate-700 mb-2">Trạng thái Chỉnh sửa Nội dung</h4>
+            <p class="text-xs text-slate-600 leading-relaxed mb-3">
+              Bạn đang ở chế độ Quản trị. Các bảng điểm chi tiết, ghi chú, điểm tuần và nội dung phía dưới website giờ đây đã bật tính năng **chỉnh sửa trực tiếp**. Bạn có thể nhấp chuột trực tiếp vào các ô hoặc bấm nút Sửa để thay đổi thông tin.
+            </p>
+          </div>
+          <div class="bg-sky-50 border border-sky-200 p-3 rounded-lg text-xs text-sky-800">
+            💡 <strong>Mẹo:</strong> Nhấn đúp hoặc click vào các ô dữ liệu trong bảng danh sách học sinh bên dưới để chỉnh sửa điểm số hoặc lỗi vi phạm ngay lập tức.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="groups-heading">
+     <div class="mb-5 flex items-end justify-between gap-4">
+      <h2 id="groups-heading" class="canva-text font-bold" style="color: rgb(24, 55, 77); font-size: 24px;">Điểm thi đua tuần của các tổ</h2>
+      <span class="canva-text hidden sm:inline" style="color: rgb(104, 132, 152); font-size: 13px;">Cập nhật liên tục</span>
+     </div>
+     <div class="group-grid">
+      <script>
+        for(let n=1; n<=6; n++) {
+          document.write(`
+            <article class="canva-card group-card ${n===2||n===5?'bg-[#f7fbff]':''}">
+             <button type="button" class="group-select" data-group="${n}"> 
+              <h3 class="canva-text font-bold" style="color: rgb(24, 55, 77); font-size: 19px;">Tổ ${n}</h3>
+              <div id="score-${n}" class="score mt-5">—</div>
+              <p id="week-${n}" class="mt-2 text-sm text-slate-500"></p>
+              <p id="note-${n}" class="mt-4 min-h-10 text-sm leading-relaxed text-slate-600"></p>
+             </button>
+            </article>
+          `);
+        }
+      </script>
+     </div>
+    </section>
+
+    <section id="weekly-detail" class="canva-section panel weekly-panel mt-7" hidden>
+     <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
+      <div>
+       <p class="canva-text eyebrow mb-2 font-bold" style="color: rgb(69, 130, 173); font-size: 12px;">CHI TIẾT THEO TUẦN</p>
+       <h2 class="canva-text font-bold" style="color: rgb(24, 55, 77); font-size: 24px;">Bảng ghi nhận điểm thi đua</h2>
+       <p id="weekly-subtitle" class="mt-1 text-sm text-slate-600"></p>
+      </div>
+      <div class="min-w-36">
+       <label for="week-select" class="canva-text mb-2 block font-semibold" style="color: rgb(24, 55, 77); font-size: 16px;">Chọn tuần</label> 
+       <select id="week-select" class="w-full rounded-lg border border-sky-300 bg-white px-3 py-2 text-slate-800"></select>
+      </div>
+     </div>
+     <p id="weekly-empty" class="canva-text mb-4 rounded-lg px-4 py-3" hidden style="background: rgb(241, 248, 253); color: rgb(82, 112, 131); font-size: 14px;">Chưa có dữ liệu học sinh cho tổ và tuần này.</p>
+     <div class="weekly-table-scroll">
+      <table class="weekly-table">
+       <thead>
+        <tr>
+         <th>STT</th>
+         <th>Họ và tên</th>
+         <th>Nghỉ học</th>
+         <th>Đi học trễ</th>
+         <th>Bài tập về nhà</th>
+         <th>Dụng cụ học tập</th>
+         <th>Đồng phục</th>
+         <th>Chép bài</th>
+         <th>Nói chuyện</th>
+         <th>Vi phạm khác</th>
+         <th>Điểm</th>
+         <th>Tổng điểm</th>
+         <th>Xếp hạng</th>
+        </tr>
+       </thead>
+       <tbody id="weekly-rows"></tbody>
+      </table>
+     </div>
+    </section>
+
+    <div class="mt-7 grid gap-4 md:grid-cols-2">
+     <section class="canva-panel panel">
+      <div class="mb-3 flex flex-wrap items-end justify-between gap-4">
+       <div>
+        <p class="canva-text eyebrow mb-3 font-bold" style="color: rgb(69, 130, 173); font-size: 12px;">tổng điểm</p>
+        <h2 class="canva-text mb-0 font-bold" style="color: rgb(24, 55, 77); font-size: 24px;">Tổng kết</h2>
+       </div>
+       <div class="min-w-36">
+        <label for="summary-week-select" class="canva-text mb-2 block font-semibold" style="color: rgb(24, 55, 77); font-size: 16px;">Chọn tuần</label> 
+        <select id="summary-week-select" class="w-full rounded-lg border border-sky-300 bg-white px-3 py-2 text-slate-800"></select>
+       </div>
+      </div>
+      <div class="weekly-table-scroll mb-5">
+       <table class="weekly-table" style="min-width:620px">
+        <thead>
+         <tr>
+          <th>Tổ</th>
+          <th>Điểm thi đua trong tuần</th>
+          <th>Bạn có điểm thấp nhất</th>
+         </tr>
+        </thead>
+        <tbody id="summary-group-rows"></tbody>
+       </table>
+      </div>
+      <div class="grid gap-5 md:grid-cols-2">
+       <div>
+        <h3 class="canva-text mb-2 font-bold" style="color: rgb(24, 55, 77); font-size: 19px;">2. XẾP HẠNG CÁC TỔ</h3>
+        <p id="summary-ranking" class="whitespace-pre-wrap leading-relaxed text-slate-700">Chưa có dữ liệu.</p>
+       </div>
+       <div>
+        <h3 class="canva-text mb-2 font-bold" style="color: rgb(24, 55, 77); font-size: 19px;">3. 3 BẠN CÓ ĐIỂM CAO NHẤT LỚP</h3>
+        <p id="summary-top3" class="whitespace-pre-wrap leading-relaxed text-slate-700">Chưa có dữ liệu.</p>
+       </div>
+      </div>
+      <div class="mt-5 border-t border-sky-100 pt-4">
+       <h3 class="canva-text mb-3 font-bold" style="color: rgb(24, 55, 77); font-size: 19px;">4. NHẬN XÉT VÀ ĐỀ XUẤT CỦA LỚP TRƯỞNG</h3>
+       <p><span class="canva-text font-semibold" style="color: rgb(24, 55, 77); font-size: 16px;">Tình hình chung:</span> <span id="summary-general" class="content-editable" data-key="general">—</span></p>
+       <p><span class="canva-text font-semibold" style="color: rgb(24, 55, 77); font-size: 16px;">Bạn có tiến bộ:</span> <span id="summary-progress" class="content-editable">—</span></p>
+       <p><span class="canva-text font-semibold" style="color: rgb(24, 55, 77); font-size: 16px;">Bạn cần cố gắng:</span> <span id="summary-effort">—</span></p>
+       <p><span class="canva-text font-semibold" style="color: rgb(24, 55, 77); font-size: 16px;">Vấn đề cần báo cáo GVCN:</span> <span id="summary-report">—</span></p>
+      </div>
+     </section>
+
+     <section class="canva-panel panel">
+      <div class="mb-4 flex flex-wrap items-end justify-between gap-4">
+       <div>
+        <p class="canva-text eyebrow mb-3 font-bold" style="color: rgb(69, 130, 173); font-size: 12px;">Trực nhật</p>
+        <h2 class="canva-text font-bold" style="color: rgb(24, 55, 77); font-size: 24px;">Phân công trực nhật</h2>
+       </div>
+       <div class="min-w-36">
+        <label for="duty-week-select" class="canva-text mb-2 block font-semibold" style="color: rgb(24, 55, 77); font-size: 16px;">Chọn tuần</label> 
+        <select id="duty-week-select" class="w-full rounded-lg border border-sky-300 bg-white px-3 py-2 text-slate-800"></select>
+       </div>
+      </div>
+      <div class="grid gap-2">
+       <script>
+         for(let period=1; period<=4; period++) {
+           document.write(`<div class="canva-card rounded-lg border border-sky-100 bg-sky-50 px-4 py-3"><span class="canva-text font-bold" style="color: rgb(24, 55, 77); font-size: 16px;">${period}</span><span id="duty-period-${period}-value" class="ml-2 text-slate-700">—</span></div>`);
+         }
+       </script>
+      </div>
+      
+      <section class="canva-panel panel mt-4">
+       <div class="mb-4 flex flex-wrap items-end justify-between gap-4">
+        <div>
+         <p class="canva-text eyebrow mb-3 font-bold" style="color: rgb(69, 130, 173); font-size: 12px;">Theo tuần</p>
+         <h2 class="canva-text font-bold" style="color: rgb(24, 55, 77); font-size: 24px;">Vi phạm</h2>
+        </div>
+       </div>
+       <div class="grid gap-2">
+        <script>
+          for(let i=1; i<=12; i++) {
+            document.write(`<div class="canva-card rounded-lg border border-sky-100 bg-sky-50 px-4 py-3"><span class="canva-text font-bold" style="color: rgb(24, 55, 77); font-size: 16px;">${i}.</span><span id="violation-row-${i}-value" class="ml-2 text-slate-700">—</span></div>`);
+          }
+        </script>
+       </div>
+      </section>
+     </section>
+    </div>
+
+    <section class="canva-section panel mt-7">
+     <h2 class="canva-text mb-4 font-bold" style="color: rgb(24, 55, 77); font-size: 24px;">Các lần ghi điểm gần đây</h2>
+     <p id="empty-history" class="canva-text py-5" style="color: rgb(104, 132, 152); font-size: 16px;">Chưa có bản ghi điểm thi đua nào để hiển thị.</p>
+     <div id="history-list" role="list"></div>
+    </section>
+
+    <p id="status" class="mt-5 text-sm text-rose-700"></p>
+   </main>
+
+   <footer class="canva-footer border-t border-sky-100 py-6" style="background: rgb(255, 255, 255);">
+    <div class="site-inner">
+     <p class="canva-text" style="color: rgb(104, 132, 152); font-size: 13px;">Bảng điểm thi đua lớp 9.6</p>
+    </div>
+   </footer>
+  </div>
+
+  <!-- Modal Đăng nhập -->
+  <div id="auth-modal" class="modal-overlay hidden">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 m-4 border border-slate-200">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-slate-800">Đăng nhập Quản trị</h3>
+        <button onclick="toggleAuthModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+      </div>
+      <p class="text-xs text-slate-500 mb-4">Đăng nhập với tài khoản quản trị để mở Tab Quản Trị và chỉnh sửa dữ liệu.</p>
+      
+      <form onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Tài khoản</label>
+          <input type="text" id="login-username" required placeholder="Nhập tài khoản" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Mật khẩu</label>
+          <input type="password" id="login-password" required placeholder="Nhập mật khẩu" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none">
+        </div>
+        
+        <p id="auth-error-msg" class="text-xs text-rose-600 font-semibold hidden">Tài khoản hoặc mật khẩu không chính xác!</p>
+        
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="toggleAuthModal()" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Hủy</button>
+          <button type="submit" class="px-4 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-sm">Đăng nhập</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <template id="history-template">
+   <article class="canva-card history-row">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+     <h3 data-template-id="history-title" class="canva-text font-bold"></h3>
+     <span data-template-id="history-score" class="canva-tag rounded-full px-3 py-1 font-bold"></span>
+    </div>
+    <p data-template-id="history-detail" class="canva-text mt-2 whitespace-pre-wrap leading-relaxed"></p>
+   </article>
+  </template>
+
+  <script>
+    // Quản lý danh sách tài khoản
+    const ACCOUNTS_KEY = "app_accounts_list";
+    function getStoredAccounts() {
+      const saved = localStorage.getItem(ACCOUNTS_KEY);
+      if (saved) {
+        try { return JSON.parse(saved); } catch(e){}
+      }
+      return [{ username: "nguynn", password: "A123bcde" }];
+    }
+
+    let accountsList = getStoredAccounts();
+    let isLoggedIn = false;
+    let activeUsername = "";
+
+    function saveAccounts() {
+      localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accountsList));
+    }
+
+    function updateAuthUI() {
+      const badge = document.getElementById("view-badge");
+      const authBtn = document.getElementById("btn-auth-action");
+      const adminTab = document.getElementById("admin-dashboard-tab");
+
+      if (isLoggedIn) {
+        badge.textContent = "Chế độ Quản trị (Có quyền chỉnh sửa)";
+        badge.style.background = "#dcfce7";
+        badge.style.color = "#15803d";
+        authBtn.textContent = "Đăng xuất (" + activeUsername + ")";
+        authBtn.className = "rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-rose-700 transition";
+        adminTab.hidden = false;
+        document.getElementById("current-logged-user").textContent = activeUsername;
+        renderAccountsManagement();
+        enableEditingMode(true);
+      } else {
+        badge.textContent = "Chế độ xem công khai";
+        badge.style.background = "rgb(233, 245, 253)";
+        badge.style.color = "rgb(39, 102, 154)";
+        authBtn.textContent = "Đăng nhập Quản trị";
+        authBtn.className = "rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-700 transition";
+        adminTab.hidden = true;
+        enableEditingMode(false);
+      }
+    }
+
+    function toggleAuthModal() {
+      if (isLoggedIn) {
+        isLoggedIn = false;
+        activeUsername = "";
+        updateAuthUI();
+        return;
+      }
+      const modal = document.getElementById("auth-modal");
+      modal.classList.toggle("hidden");
+      document.getElementById("auth-error-msg").classList.add("hidden");
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById("login-username").value.trim();
+      const p = document.getElementById("login-password").value.trim();
+
+      const found = accountsList.find(acc => acc.username === u && acc.password === p);
+      if (found) {
+        isLoggedIn = true;
+        activeUsername = found.username;
+        document.getElementById("login-username").value = "";
+        document.getElementById("login-password").value = "";
+        toggleAuthModal();
+        updateAuthUI();
+      } else {
+        document.getElementById("auth-error-msg").classList.remove("hidden");
+      }
+    }
+
+    // Thêm tài khoản mới từ tab quản trị
+    function handleAddAccount(e) {
+      e.preventDefault();
+      const u = document.getElementById("new-acc-user").value.trim();
+      const p = document.getElementById("new-acc-pass").value.trim();
+
+      if (!u || !p) return;
+      if (accountsList.some(acc => acc.username === u)) {
+        alert("Tài khoản này đã tồn tại!");
+        return;
+      }
+
+      accountsList.push({ username: u, password: p });
+      saveAccounts();
+      renderAccountsManagement();
+      document.getElementById("new-acc-user").value = "";
+      document.getElementById("new-acc-pass").value = "";
+      alert("Thêm tài khoản thành công!");
+    }
+
+    // Xóa tài khoản
+    function deleteAccount(username) {
+      if (accountsList.length <= 1) {
+        alert("Cần giữ lại ít nhất một tài khoản trong hệ thống!");
+        return;
+      }
+      if (confirm(`Bạn có chắc muốn xóa tài khoản "${username}" không?`)) {
+        accountsList = accountsList.filter(acc => acc.username !== username);
+        saveAccounts();
+        renderAccountsManagement();
+      }
+    }
+
+    function renderAccountsManagement() {
+      const container = document.getElementById("accounts-list-container");
+      container.innerHTML = "";
+      accountsList.forEach(acc => {
+        const div = document.createElement("div");
+        div.className = "flex items-center justify-between bg-slate-50 border border-slate-200 px-3 py-1.5 rounded text-xs";
+        div.innerHTML = `
+          <span>👤 <b>${acc.username}</b> (MK: ${acc.password})</span>
+          ${accountsList.length > 1 ? `<button onclick="deleteAccount('${acc.username}')" class="text-rose-600 hover:text-rose-800 font-semibold">Xóa</button>` : '<span class="text-slate-400 italic">Mặc định</span>'}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Kích hoạt tính năng sửa trực tiếp trên các bảng khi đăng nhập
+    function enableEditingMode(enable) {
+      const cells = document.querySelectorAll(".weekly-table tbody td, .content-editable");
+      cells.forEach(cell => {
+        if (enable) {
+          cell.classList.add("editable-cell");
+          cell.contentEditable = "true";
+          cell.title = "Click để chỉnh sửa nội dung";
+        } else {
+          cell.classList.remove("editable-cell");
+          cell.contentEditable = "false";
+          cell.removeAttribute("title");
+        }
+      });
+    }
+
+    // Logic Render Điểm & Giao diện cũ
+    const fallback = {
+      score: "Chưa có điểm",
+      note: "Chưa có ghi chú.",
+      summary: "Chưa có nội dung tổng kết.",
+      duty: "Chưa có phân công trực nhật."
+    };
+    const list = document.getElementById("history-list");
+    const historyNodes = new Map();
+    const tableNodes = new Map();
+    const weeklyBody = document.getElementById("weekly-rows");
+    const weekSelect = document.getElementById("week-select");
+    const summaryWeekSelect = document.getElementById("summary-week-select");
+    const dutyWeekSelect = document.getElementById("duty-week-select");
+    const detailPanel = document.getElementById("weekly-detail");
+    let summaryWeek = 1;
+    let dutyWeek = 1;
+
+    for (let week = 1; week <= 35; week++) {
+      const option = document.createElement("option");
+      option.value = String(week);
+      option.textContent = "Tuần " + week;
+      dutyWeekSelect.appendChild(option);
+    }
+    dutyWeekSelect.addEventListener("change", () => {
+      dutyWeek = Number(dutyWeekSelect.value);
+      render(currentRows);
+    });
+
+    for (let week = 1; week <= 35; week++) {
+      const option = document.createElement("option");
+      option.value = String(week);
+      option.textContent = "Tuần " + week;
+      summaryWeekSelect.appendChild(option);
+    }
+    summaryWeekSelect.addEventListener("change", () => {
+      summaryWeek = Number(summaryWeekSelect.value);
+      render(currentRows);
+    });
+
+    const fields = ["student_number", "student_name", "absent", "late", "homework", "supplies", "uniform", "behavior", "merit", "other_deduction", "score", "total_score", "rank"];
+    let currentRows = [];
+    let selectedGroup = null;
+
+    for (let week = 1; week <= 35; week++) {
+      const option = document.createElement("option");
+      option.value = String(week);
+      option.textContent = "Tuần " + week;
+      weekSelect.appendChild(option);
+    }
+
+    const stamp = row => {
+      const value = Date.parse(row.created_at || "");
+      return Number.isFinite(value) ? value : 0;
+    };
+    const display = value => value === null || value === undefined ? "" : String(value);
+
+    function makeTableRow(key) {
+      const tr = document.createElement("tr");
+      tr.dataset.rowKey = key;
+      fields.forEach((field, index) => {
+        const cell = document.createElement(index === 0 ? "th" : "td");
+        if (index === 0) cell.scope = "row";
+        cell.dataset.field = field;
+        if (isLoggedIn) {
+          cell.className = "editable-cell";
+          cell.contentEditable = "true";
+        }
+        tr.appendChild(cell);
+      });
+      return tr;
+    }
+
+    function renderWeekly() {
+      if (selectedGroup === null) return;
+      const week = Number(weekSelect.value);
+      document.getElementById("weekly-subtitle").textContent = "Tổ " + selectedGroup + " · Tuần " + week;
+      const matching = currentRows
+        .filter(row => Number(row.group_number) === selectedGroup
+          && Number(row.week) === week
+          && (display(row.student_name).trim() || Number(row.student_number) > 0))
+        .sort((a, b) => Number(a.student_number || 9999) - Number(b.student_number || 9999) || stamp(a) - stamp(b));
+
+      document.getElementById("weekly-empty").hidden = matching.length > 0;
+      const shown = new Set();
+      const count = Math.max(13, matching.length);
+      for (let i = 0; i < count; i++) {
+        const row = matching[i];
+        const key = row ? (row.__backendId || "student-" + i) : "blank-" + i;
+        shown.add(key);
+        let tr = tableNodes.get(key);
+        if (!tr) {
+          tr = makeTableRow(key);
+          tableNodes.set(key, tr);
+        }
+        fields.forEach((field, index) => {
+          const cell = tr.children[index];
+          const value = field === "student_number" ? (row && Number(row.student_number) > 0 ? row.student_number : i + 1) : row?.[field];
+          const text = display(value);
+          if (cell.textContent !== text) cell.textContent = text;
+        });
+        weeklyBody.appendChild(tr);
+      }
+      for (const [key, tr] of tableNodes) {
+        if (!shown.has(key)) {
+          tr.remove();
+          tableNodes.delete(key);
+        }
+      }
+    }
+
+    document.querySelectorAll(".group-select").forEach(button => {
+      button.addEventListener("click", () => {
+        selectedGroup = Number(button.dataset.group);
+        detailPanel.hidden = false;
+        document.querySelectorAll(".group-select").forEach(item => {
+          const active = item === button;
+          item.setAttribute("aria-pressed", String(active));
+          item.setAttribute("aria-expanded", String(active));
+          item.closest(".group-card").classList.toggle("is-selected", active);
+        });
+        renderWeekly();
+        detailPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    });
+    weekSelect.addEventListener("change", renderWeekly);
+    weekSelect.addEventListener("input", renderWeekly);
+
+    function render(rows) {
+      currentRows = rows;
+      const sorted = [...rows].sort((a, b) => stamp(b) - stamp(a));
+      for (let n = 1; n <= 6; n++) {
+        const record = sorted.find(row => row.type === "score" && Number(row.group_number) === n);
+        document.getElementById("score-" + n).textContent = record && Number.isFinite(Number(record.score)) ? String(record.score) : "—";
+        document.getElementById("week-" + n).textContent = record?.week ? "Tuần " + record.week : fallback.score;
+        document.getElementById("note-" + n).textContent = record?.note || fallback.note;
+      }
+
+      const weeklyRows = sorted.filter(row => Number(row.week) === summaryWeek);
+      const summary = weeklyRows.find(row => row.type === "summary" && row.summary) || sorted.find(row => row.type === "summary" && row.summary);
+      const dutyRows = sorted.filter(row => row.type === "duty" && Number(row.week) === dutyWeek);
+      const duty = dutyRows.find(row => row.duty_assignment) || {};
+      [1, 2, 3, 4].forEach(period => {
+        document.getElementById("duty-period-" + period + "-value").textContent = duty["duty_period_" + period] || "—";
+      });
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].forEach(number => {
+        const el = document.getElementById("violation-row-" + number + "-value");
+        if(el) el.textContent = duty["violation_" + number] || "—";
+      });
+      const groupRows = document.getElementById("summary-group-rows");
+      groupRows.replaceChildren();
+      for (let group = 1; group <= 6; group++) {
+        const record = sorted.find(row => row.type === "score" && Number(row.group_number) === group);
+        const tr = document.createElement("tr");
+        ["Tổ " + group, record?.score ?? "—", record?.lowest_students || "—"].forEach(value => {
+          const td = document.createElement("td"); 
+          td.textContent = String(value); 
+          if (isLoggedIn) { td.className = "editable-cell"; td.contentEditable = "true"; }
+          tr.appendChild(td);
+        });
+        groupRows.appendChild(tr);
+      }
+      const scores = weeklyRows.filter(row => row.type === "score" && Number(row.group_number) >= 1 && Number(row.group_number) <= 6);
+      document.getElementById("summary-ranking").textContent = scores.slice().sort((a,b) => Number(b.score || 0) - Number(a.score || 0)).map((row,i) => (i + 1) + ". Tổ " + row.group_number).join("\n") || "Chưa có dữ liệu.";
+      document.getElementById("summary-top3").textContent = scores[0]?.top3_students || "Chưa có dữ liệu.";
+      document.getElementById("summary-general").textContent = summary?.general_comment || summary?.summary || "—";
+      document.getElementById("summary-progress").textContent = summary?.progress_student || "—";
+      document.getElementById("summary-effort").textContent = summary?.effort_student || "—";
+      document.getElementById("summary-report").textContent = summary?.report_to_teacher || "—";
+
+      const historyScores = sorted.filter(row => row.type === "score" && Number(row.group_number) >= 1 && Number(row.group_number) <= 6).slice(0, 18);
+      document.getElementById("empty-history").hidden = historyScores.length > 0;
+      const shown = new Set();
+      historyScores.forEach((row, index) => {
+        const key = row.__backendId || "row-" + index;
+        shown.add(key);
+        let node = historyNodes.get(key);
+        if (!node) {
+          node = document.getElementById("history-template").content.firstElementChild.cloneNode(true);
+          historyNodes.set(key, node);
+        }
+        const title = "Tổ " + Number(row.group_number) + (row.week ? " · Tuần " + row.week : "");
+        const points = Number.isFinite(Number(row.score)) ? Number(row.score) + " điểm" : fallback.score;
+        const detail = row.note || fallback.note;
+        const titleEl = node.querySelector('[data-template-id="history-title"]');
+        const scoreEl = node.querySelector('[data-template-id="history-score"]');
+        const detailEl = node.querySelector('[data-template-id="history-detail"]');
+        if (titleEl.textContent !== title) titleEl.textContent = title;
+        if (scoreEl.textContent !== points) scoreEl.textContent = points;
+        if (detailEl.textContent !== detail) detailEl.textContent = detail;
+        list.appendChild(node);
+      });
+      for (const [key, node] of historyNodes) {
+        if (!shown.has(key)) {
+          node.remove();
+          historyNodes.delete(key);
+        }
+      }
+      renderWeekly();
+    }
+
+    (async () => {
+      try {
+        if (!window.dataSdk) throw new Error("unavailable");
+        const result = await window.dataSdk.init({
+          onDataChanged(data) {
+            document.getElementById("status").textContent = "";
+            render(Array.isArray(data) ? data : []);
+          }
+        });
+        if (!result.isOk) throw new Error("init failed");
+      } catch {
+        document.getElementById("status").textContent = "";
+      }
+    })();
+  </script>
+</body>
+</html>
